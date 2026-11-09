@@ -111,51 +111,57 @@ body[data-theme="archive"] .oak-bg{opacity:.86;filter:sepia(.28) saturate(.74) c
 .tree-world[data-lod="near"] .person-name{font-size:13px!important}
 .tree-world[data-lod="near"] .person-dates{font-size:10px!important;margin-top:6px!important}
 
-/* ===== Canvas-only approval stage ===== */
+
+/* ===== Approved canvas composition: quiet luxury ===== */
 .tree-viewport{
-  background:#f5ead7!important;
-  overflow:hidden!important;
   position:relative!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 50% 46%,rgba(255,250,238,.72) 0 42%,rgba(244,230,205,.44) 76%,rgba(231,210,174,.28) 100%),
+    #f4ead7!important;
 }
 .tree-viewport:before{
   content:"";
   position:absolute;
-  inset:0!important;
-  z-index:20!important;
+  inset:10px!important;
+  z-index:30!important;
   pointer-events:none;
-  border:2px solid #b88c45!important;
+  border:2px solid #b7852f!important;
   box-shadow:
-    inset 0 0 0 9px rgba(184,140,69,.055),
-    inset 0 0 0 11px rgba(184,140,69,.32)!important;
+    inset 0 0 0 5px rgba(255,248,232,.55),
+    inset 0 0 0 7px rgba(183,133,47,.28)!important;
 }
 .tree-viewport:after{
   content:"";
   position:absolute;
-  inset:13px!important;
-  z-index:20!important;
+  inset:18px!important;
+  z-index:30!important;
   pointer-events:none;
-  border:1px solid rgba(169,123,51,.55)!important;
+  border:1px solid rgba(173,120,37,.52)!important;
 }
 .tree-world{
+  position:absolute!important;
+  inset:0!important;
   width:100%!important;
   height:100%!important;
-  left:0!important;
-  top:0!important;
   transform:none!important;
+  z-index:1!important;
 }
 .oak-bg{
   position:absolute!important;
   left:50%!important;
-  top:50%!important;
-  width:80%!important;
-  height:80%!important;
+  top:52%!important;
+  width:86%!important;
+  height:82%!important;
   transform:translate(-50%,-50%)!important;
   object-fit:fill!important;
-  clip-path:inset(2.8%)!important;
+  clip-path:inset(4.2% 3.5% 3.0% 3.5%)!important;
   opacity:1!important;
+  filter:saturate(.98) sepia(.04) brightness(1.025) contrast(.98)!important;
+  pointer-events:none!important;
 }
 .relation-svg,.person-layer{display:none!important}
-.canvas-tools span,#zoomValue{min-width:54px}
+
 </style>
 </head>
 <body data-theme="quiet">
