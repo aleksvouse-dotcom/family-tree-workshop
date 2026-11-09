@@ -238,29 +238,32 @@ function minTreeScale(){
   const vp=$('#treeViewport');
   if(!vp)return .35;
   const {w,h}=state.worldSize||{w:2920,h:1643};
-  return Math.min(1.45,Math.max(.35,vp.clientWidth/w,vp.clientHeight/h));
+  const vw=Math.max(1,vp.clientWidth),vh=Math.max(1,vp.clientHeight);
+  /* 2px safety prevents fractional-pixel seams from exposing the viewport behind the canvas. */
+  const coverScale=Math.max((vw+2)/w,(vh+2)/h);
+  return Math.min(1.45,Math.max(.35,coverScale));
 }
 function clampWorldOffset(){
   const vp=$('#treeViewport');
   if(!vp)return;
-  const {w,h}=state.worldSize||{w:1800,h:1000};
-  state.scale=Math.max(minTreeScale(),state.scale);
-  const scaledW=w*state.scale, scaledH=h*state.scale;
-  const vw=vp.clientWidth, vh=vp.clientHeight;
-  if(scaledW<=vw){
-    state.offset.x=Math.round((vw-scaledW)/2);
-  }else{
-    const minX=vw-scaledW;
-    state.offset.x=Math.min(0,Math.max(minX,state.offset.x));
-  }
-  if(scaledH<=vh){
-    state.offset.y=Math.round((vh-scaledH)/2);
-  }else{
-    const minY=vh-scaledH;
-    state.offset.y=Math.min(0,Math.max(minY,state.offset.y));
-  }
+  const {w,h}=state.worldSize||{w:2920,h:1643};
+  const minScale=minTreeScale();
+  state.scale=Math.min(1.45,Math.max(minScale,state.scale));
+  const scaledW=w*state.scale,scaledH=h*state.scale;
+  const vw=vp.clientWidth,vh=vp.clientHeight;
+  const minX=Math.min(0,vw-scaledW),minY=Math.min(0,vh-scaledH);
+  state.offset.x=Math.min(0,Math.max(minX,Number.isFinite(state.offset.x)?state.offset.x:0));
+  state.offset.y=Math.min(0,Math.max(minY,Number.isFinite(state.offset.y)?state.offset.y:0));
+  /* If an axis is effectively an exact fit, pin it to the centre instead of allowing a sub-pixel gap. */
+  if(Math.abs(scaledW-vw)<2.5)state.offset.x=(vw-scaledW)/2;
+  if(Math.abs(scaledH-vh)<2.5)state.offset.y=(vh-scaledH)/2;
 }
-function updateWorldTransform(){clampWorldOffset();const w=$('#treeWorld');w.style.transform=`translate(${state.offset.x}px,${state.offset.y}px) scale(${state.scale})`;const v=Math.round(state.scale*100)+'%';$('#zoomValue').textContent=v;if($('#zoomValueCanvas'))$('#zoomValueCanvas').textContent=v}
+function syncZoomControls(){
+  const min=minTreeScale(),atMin=state.scale<=min+.001,atMax=state.scale>=1.45-.001;
+  ['#zoomOut','#zoomOutCanvas'].forEach(s=>{const b=$(s);if(b)b.disabled=atMin});
+  ['#zoomIn','#zoomInCanvas'].forEach(s=>{const b=$(s);if(b)b.disabled=atMax});
+}
+function updateWorldTransform(){clampWorldOffset();const w=$('#treeWorld');w.style.transform=`translate(${state.offset.x}px,${state.offset.y}px) scale(${state.scale})`;const v=Math.round(state.scale*100)+'%';$('#zoomValue').textContent=v;if($('#zoomValueCanvas'))$('#zoomValueCanvas').textContent=v;syncZoomControls()}
 function centerOnPerson(id,scale=.82){const vp=$('#treeViewport');if(!vp)return;const layout=layoutPeople(),pt=layout.pos.get(id);if(!pt)return;state.scale=scale;state.offset={x:Math.round(vp.clientWidth/2-(pt.x+CARD_W/2)*scale),y:Math.round(Math.max(28,vp.clientHeight*.22)-(pt.y+CARD_H/2)*scale)};updateWorldTransform()}
 function centerOverview(){const vp=$('#treeViewport');if(!vp)return;const layout=overviewLayout();const pad=22;const sx=(vp.clientWidth-pad*2)/layout.w,sy=(vp.clientHeight-pad*2)/layout.h;state.scale=Math.max(minTreeScale(),Math.min(.58,Math.min(sx,sy)));state.offset={x:Math.round((vp.clientWidth-layout.w*state.scale)/2),y:Math.round((vp.clientHeight-layout.h*state.scale)/2)};updateWorldTransform()}
 function fitTreeView(){const vp=$('#treeViewport');if(!vp||vp.classList.contains('hidden'))return;const {w,h}=state.worldSize||{w:1800,h:1000};const vw=Math.max(320,vp.clientWidth),vh=Math.max(320,vp.clientHeight);const pad=44;const sx=(vw-pad*2)/w,sy=(vh-pad*2)/h;state.scale=Math.max(minTreeScale(),Math.min(.78,Math.min(sx,sy)));state.offset={x:Math.round((vw-w*state.scale)/2),y:Math.round((vh-h*state.scale)/2)};updateWorldTransform()}
