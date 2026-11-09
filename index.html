@@ -110,6 +110,52 @@ body[data-theme="archive"] .oak-bg{opacity:.86;filter:sepia(.28) saturate(.74) c
 .tree-world[data-lod="near"] .portrait{left:12px!important;width:50px!important;height:64px!important;outline-offset:2px!important;font-size:14px!important}
 .tree-world[data-lod="near"] .person-name{font-size:13px!important}
 .tree-world[data-lod="near"] .person-dates{font-size:10px!important;margin-top:6px!important}
+
+/* ===== Canvas-only approval stage ===== */
+.tree-viewport{
+  background:#f5ead7!important;
+  overflow:hidden!important;
+  position:relative!important;
+}
+.tree-viewport:before{
+  content:"";
+  position:absolute;
+  inset:0!important;
+  z-index:20!important;
+  pointer-events:none;
+  border:2px solid #b88c45!important;
+  box-shadow:
+    inset 0 0 0 9px rgba(184,140,69,.055),
+    inset 0 0 0 11px rgba(184,140,69,.32)!important;
+}
+.tree-viewport:after{
+  content:"";
+  position:absolute;
+  inset:13px!important;
+  z-index:20!important;
+  pointer-events:none;
+  border:1px solid rgba(169,123,51,.55)!important;
+}
+.tree-world{
+  width:100%!important;
+  height:100%!important;
+  left:0!important;
+  top:0!important;
+  transform:none!important;
+}
+.oak-bg{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  width:80%!important;
+  height:80%!important;
+  transform:translate(-50%,-50%)!important;
+  object-fit:fill!important;
+  clip-path:inset(2.8%)!important;
+  opacity:1!important;
+}
+.relation-svg,.person-layer{display:none!important}
+.canvas-tools span,#zoomValue{min-width:54px}
 </style>
 </head>
 <body data-theme="quiet">
@@ -304,19 +350,18 @@ function clampWorldOffset(){
   state.offset.y=Math.min(maxY,Math.max(minY,state.offset.y));
 }
 function updateWorldTransform(){
-  clampWorldOffset();
-  const w=$('#treeWorld'), prev=w.dataset.lod||'', next=lodMode();
-  w.dataset.lod=next;
-  w.style.transform=`translate(${state.offset.x}px,${state.offset.y}px) scale(${state.scale})`;
-  const v=Math.round(state.scale*100)+'%';$('#zoomValue').textContent=v;if($('#zoomValueCanvas'))$('#zoomValueCanvas').textContent=v;
-  if(prev&&prev!==next&&state.view==='tree'){renderPeople();requestAnimationFrame(updateWorldTransform)}
+  state.scale=Math.max(1,state.scale||1);
+  state.offset={x:0,y:0};
+  const v=Math.round(state.scale*100)+'%';
+  if($('#zoomValue'))$('#zoomValue').textContent=v;
+  if($('#zoomValueCanvas'))$('#zoomValueCanvas').textContent=v;
 }
 function centerOnPerson(id,scale=.82){const vp=$('#treeViewport');if(!vp)return;const layout=layoutPeople(),pt=layout.pos.get(id);if(!pt)return;state.scale=scale;const lm=lodMetrics();state.offset={x:Math.round(vp.clientWidth/2-(pt.x+lm.w/2)*scale),y:Math.round(Math.max(28,vp.clientHeight*.22)-(pt.y+lm.h/2)*scale)};updateWorldTransform()}
 function centerOverview(){const vp=$('#treeViewport');if(!vp)return;const layout=layoutPeople();const pad=22;const sx=(vp.clientWidth-pad*2)/layout.w,sy=(vp.clientHeight-pad*2)/layout.h;state.scale=Math.max(.22,Math.min(.78,Math.min(sx,sy)));state.offset={x:Math.round((vp.clientWidth-layout.w*state.scale)/2),y:Math.round((vp.clientHeight-layout.h*state.scale)/2)};updateWorldTransform()}
 function fitTreeView(){const vp=$('#treeViewport');if(!vp||vp.classList.contains('hidden'))return;const {w,h}=state.worldSize||{w:1800,h:1000};const vw=Math.max(320,vp.clientWidth),vh=Math.max(320,vp.clientHeight);const pad=44;const sx=(vw-pad*2)/w,sy=(vh-pad*2)/h;state.scale=Math.max(.22,Math.min(.78,Math.min(sx,sy)));state.offset={x:Math.round((vw-w*state.scale)/2),y:Math.round((vh-h*state.scale)/2)};updateWorldTransform()}
 function renderAll(){renderBranches();if(state.view==='tree')renderPeople();renderProfile();applyTheme(state.theme);$('#accessBtn').textContent=state.role==='admin'?'Администратор':state.role==='editor'?'Редактор':state.role==='viewer'?'Семейный просмотр':'Семейный доступ'}
-async function init(){const remote=await api.bootstrap();let data;if(remote?.people?.length){data=remote;state.role=remote.auth?.role||'viewer';state.viewerPersonId=remote.auth?.personId||'P053'}else{localStorage.removeItem('family-local-data');data=window.__INITIAL_DATA__||await fetch('/data.json').then(r=>r.json())}state.people=data.people||[];state.relations=data.relations||[];state.events=data.events||[];state.relations.forEach(r=>{if(r.type==='partner'&&/перв(ый|ая|ое)\s+(муж|жена|брак)/i.test(r.note||''))r.status='ended'});state.selected=null;renderAll();bindUI();requestAnimationFrame(()=>requestAnimationFrame(centerOverview));}
-function bindUI(){applyTheme(state.theme);$('#themeSelect').onchange=e=>applyTheme(e.target.value);$('#newPersonBtn').onclick=()=>openPersonModal({});$('#relationBtn').onclick=openRelationModal;$('#accessBtn').onclick=openAccessModal;$('#profileClose').onclick=closeProfile;$('#mainTreeBtn').onclick=()=>{state.branch=null;state.selected=null;$('#stageSub').textContent='Тестовая нагрузка · 150 условных человек';renderProfile();showTree();requestAnimationFrame(centerOverview)};$('#resetViewBtn').onclick=()=>state.branch?fitTreeView():centerOverview;const zin=()=>{state.scale=Math.min(1.45,state.scale+.1);updateWorldTransform()},zout=()=>{state.scale=Math.max(.22,state.scale-.1);updateWorldTransform()};$('#zoomIn').onclick=zin;$('#zoomOut').onclick=zout;$('#zoomInCanvas').onclick=zin;$('#zoomOutCanvas').onclick=zout;$('#fitCanvas').onclick=fitTreeView;$('#treeViewport').addEventListener('wheel',e=>{e.preventDefault();state.scale=Math.max(.22,Math.min(1.45,state.scale+(e.deltaY<0?.06:-.06)));updateWorldTransform()},{passive:false});const vp=$('#treeViewport');vp.addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('.person-card,.canvas-tools'))return;e.preventDefault();window.getSelection()?.removeAllRanges();});vp.addEventListener('dragstart',e=>e.preventDefault());vp.addEventListener('selectstart',e=>e.preventDefault());vp.addEventListener('mousedown',e=>{if(!e.target.closest('input,textarea,select'))e.preventDefault()});document.addEventListener('click',e=>{if(!e.target.closest('.context-menu'))closeContext()});const search=e=>{const q=e.target.value.trim().toLowerCase();if(!q)return;const p=state.people.find(x=>x.name.toLowerCase().includes(q));if(p){state.branch=null;showTree();selectPerson(p.id);requestAnimationFrame(()=>centerOnPerson(p.id,.8))}};$('#globalSearch').addEventListener('change',search);$('#sideSearch').addEventListener('change',search);$$('.nav-btn').forEach(b=>b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const v=b.dataset.view;if(v==='tree')showTree();else if(v==='people')openPeopleView();else if(v==='stories')openStoriesView();else if(v==='photos')openSimpleView('Фото','Здесь будет семейный фотоархив с привязкой фотографий к людям.');else openSimpleView('Документы','Здесь будут семейные документы и архивные материалы.')});$('#myLineBtn').onclick=()=>{state.branch='__lineage__';state.selected=null;$('#stageSub').textContent='Моя линия';renderProfile();showTree();requestAnimationFrame(fitTreeView)};$('#editModeBtn').onclick=()=>toast(state.role==='viewer'?'У вас только права просмотра':'Редактирование доступно через карточки и правый клик');let resizeTimer;window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(fitTreeView,140)})}
+async function init(){const remote=await api.bootstrap();let data;if(remote?.people?.length){data=remote;state.role=remote.auth?.role||'viewer';state.viewerPersonId=remote.auth?.personId||'P053'}else{localStorage.removeItem('family-local-data');data=window.__INITIAL_DATA__||await fetch('/data.json').then(r=>r.json())}state.people=data.people||[];state.relations=data.relations||[];state.events=data.events||[];state.relations.forEach(r=>{if(r.type==='partner'&&/перв(ый|ая|ое)\s+(муж|жена|брак)/i.test(r.note||''))r.status='ended'});state.selected=null;state.scale=1;state.offset={x:0,y:0};renderAll();bindUI();requestAnimationFrame(()=>requestAnimationFrame(centerOverview));}
+function bindUI(){applyTheme(state.theme);$('#themeSelect').onchange=e=>applyTheme(e.target.value);$('#newPersonBtn').onclick=()=>openPersonModal({});$('#relationBtn').onclick=openRelationModal;$('#accessBtn').onclick=openAccessModal;$('#profileClose').onclick=closeProfile;$('#mainTreeBtn').onclick=()=>{state.branch=null;state.selected=null;$('#stageSub').textContent='Тестовая нагрузка · 150 условных человек';renderProfile();showTree();requestAnimationFrame(centerOverview)};$('#resetViewBtn').onclick=()=>state.branch?fitTreeView():centerOverview;const zin=()=>{state.scale=Math.min(1.45,state.scale+.1);updateWorldTransform()},zout=()=>{state.scale=Math.max(1,state.scale-.1);updateWorldTransform()};$('#zoomIn').onclick=zin;$('#zoomOut').onclick=zout;$('#zoomInCanvas').onclick=zin;$('#zoomOutCanvas').onclick=zout;$('#fitCanvas').onclick=fitTreeView;$('#treeViewport').addEventListener('wheel',e=>{e.preventDefault();state.scale=Math.max(1,Math.min(1.45,state.scale+(e.deltaY<0?.06:-.06)));updateWorldTransform()},{passive:false});const vp=$('#treeViewport');vp.addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('.person-card,.canvas-tools'))return;e.preventDefault();window.getSelection()?.removeAllRanges();});vp.addEventListener('dragstart',e=>e.preventDefault());vp.addEventListener('selectstart',e=>e.preventDefault());vp.addEventListener('mousedown',e=>{if(!e.target.closest('input,textarea,select'))e.preventDefault()});document.addEventListener('click',e=>{if(!e.target.closest('.context-menu'))closeContext()});const search=e=>{const q=e.target.value.trim().toLowerCase();if(!q)return;const p=state.people.find(x=>x.name.toLowerCase().includes(q));if(p){state.branch=null;showTree();selectPerson(p.id);requestAnimationFrame(()=>centerOnPerson(p.id,.8))}};$('#globalSearch').addEventListener('change',search);$('#sideSearch').addEventListener('change',search);$$('.nav-btn').forEach(b=>b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');const v=b.dataset.view;if(v==='tree')showTree();else if(v==='people')openPeopleView();else if(v==='stories')openStoriesView();else if(v==='photos')openSimpleView('Фото','Здесь будет семейный фотоархив с привязкой фотографий к людям.');else openSimpleView('Документы','Здесь будут семейные документы и архивные материалы.')});$('#myLineBtn').onclick=()=>{state.branch='__lineage__';state.selected=null;$('#stageSub').textContent='Моя линия';renderProfile();showTree();requestAnimationFrame(fitTreeView)};$('#editModeBtn').onclick=()=>toast(state.role==='viewer'?'У вас только права просмотра':'Редактирование доступно через карточки и правый клик');let resizeTimer;window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(fitTreeView,140)})}
 init();
 
 </script>
